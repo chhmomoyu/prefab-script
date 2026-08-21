@@ -1,0 +1,4 @@
+node_modules/
+dist/
+examples/out/
+*.tmp.prefab
