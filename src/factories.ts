@@ -240,6 +240,11 @@ export const WIDGET_ALIGN_FULL = 1 + 4 + 8 + 32;
 
 export const ROOT_SIZE = { width: 1080, height: 1920 };
 
+/** cc.Sprite._sizeMode */
+export const SPRITE_SIZE_CUSTOM = 0;
+export const SPRITE_SIZE_TRIMMED = 1;
+export const SPRITE_SIZE_RAW = 2;
+
 export function createWidget(): PrefabObject {
     return {
         __type__: "cc.Widget",

@@ -1,16 +1,22 @@
 {
     "name": "prefab-script",
-    "version": "1.0.0",
-    "description": "AI-facing Node API for reading and writing Cocos Creator 3.8 prefab files",
-    "main": "dist/index.js",
-    "types": "dist/index.d.ts",
+    "version": "1.1.0",
+    "description": "TypeScript API for writing Cocos Creator 3.8 prefab files (Node scripts, not an editor panel)",
+    "main": "./editor-main.js",
+    "types": "./src/index.ts",
     "scripts": {
         "build": "npx tsc",
         "dump": "npx ts-node src/cli.ts dump",
+        "preview": "npx ts-node src/cli.ts preview",
         "test": "npx ts-node src/self-test.ts"
+    },
+    "dependencies": {
+        "jpeg-js": "^0.4.4",
+        "pngjs": "^6.0.0"
     },
     "devDependencies": {
         "@types/node": "^18.17.1",
+        "@types/pngjs": "^6.0.5",
         "ts-node": "^10.9.2",
         "typescript": "^5.8.2"
     }

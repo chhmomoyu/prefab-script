@@ -71,12 +71,26 @@ export function resolveSprite(input: string, projectRoot: string): SpriteRef {
     }
 
     const spriteFrame = findSubMetaUuid(meta, "sprite-frame") || `${meta.uuid}@f9941`;
-    return { spriteFrame };
+    const size = spriteFrameRawSize(meta, spriteFrame);
+    return { spriteFrame, rawWidth: size.width, rawHeight: size.height };
+}
+
+function spriteFrameRawSize(meta: any, spriteUuid: string): { width?: number; height?: number } {
+    const subMetas = meta.subMetas || {};
+    for (const key of Object.keys(subMetas)) {
+        const sub = subMetas[key];
+        if (sub?.importer === "sprite-frame" && (sub.uuid === spriteUuid || key === "f9941")) {
+            return rawSize(sub.userData);
+        }
+    }
+    return {};
 }
 
 export interface AtlasFrame {
     name: string;
     uuid: string;
+    rawWidth?: number;
+    rawHeight?: number;
 }
 
 const ATLAS_HINTS: Record<string, string> = {
@@ -100,6 +114,7 @@ export function findAtlasMeta(projectRoot: string, hint: string): string {
         path.join(projectRoot, "assets/ui3/activity", `${hint}.plist.meta`),
         path.join(projectRoot, "assets/ui3/game", `${hint}.plist.meta`),
         path.join(projectRoot, "assets/ui3/other", `${hint}.plist.meta`),
+        path.join(projectRoot, "assets/localization/zh-Hant-TW/system", `${hint}.plist.meta`),
     ];
     for (const p of candidates) {
         if (fs.existsSync(p)) {
@@ -116,7 +131,12 @@ export function listAtlasFrames(projectRoot: string, hint: string): AtlasFrame[]
     for (const key of Object.keys(subMetas)) {
         const sub = subMetas[key];
         if (sub?.importer === "sprite-frame" && sub.uuid && sub.name) {
-            frames.push({ name: sub.name, uuid: sub.uuid });
+            frames.push({
+                name: sub.name,
+                uuid: sub.uuid,
+                rawWidth: rawSize(sub.userData).width,
+                rawHeight: rawSize(sub.userData).height,
+            });
         }
     }
     return frames.sort((a, b) => a.name.localeCompare(b.name));
@@ -129,7 +149,24 @@ export function lookupAtlasSprite(projectRoot: string, hint: string, frameName: 
         const names = frames.slice(0, 12).map((f) => f.name).join(", ");
         throw new Error(`Sprite "${frameName}" not in atlas "${hint}". Examples: ${names}`);
     }
-    return { spriteFrame: hit.uuid, atlas: hit.uuid.split("@")[0] };
+    return {
+        spriteFrame: hit.uuid,
+        atlas: hit.uuid.split("@")[0],
+        rawWidth: hit.rawWidth,
+        rawHeight: hit.rawHeight,
+    };
+}
+
+function rawSize(userData: any): { width?: number; height?: number } {
+    if (!userData) {
+        return {};
+    }
+    const width = userData.rawWidth || userData.width;
+    const height = userData.rawHeight || userData.height;
+    return {
+        width: typeof width === "number" && width > 0 ? width : undefined,
+        height: typeof height === "number" && height > 0 ? height : undefined,
+    };
 }
 
 function findSubMetaUuid(meta: any, importer: string): string | undefined {

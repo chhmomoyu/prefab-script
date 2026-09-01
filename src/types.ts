@@ -48,6 +48,8 @@ export interface WidgetOptions {
 export interface SpriteRef {
     spriteFrame: string;
     atlas?: string;
+    rawWidth?: number;
+    rawHeight?: number;
 }
 
 export interface NodeDump {

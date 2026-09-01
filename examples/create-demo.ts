@@ -1,46 +1,51 @@
-/**
- * 最小示例：造一个 1080×1920 界面（标题 + 按钮），不依赖业务图集。
- *
- *   npx ts-node examples/create-demo.ts
- *
- * 默认写到 examples/out/DemoWin.prefab。要让 Creator 导入，把 `out` 改到工程的 assets/ 下。
- * 若工程里有 sample_UI（顶栏、按钮等），取消下面 instantiateSample 的注释即可套模板。
- */
 import * as path from "path";
 import { PrefabDoc } from "../src";
 
-const libRoot = path.resolve(__dirname, "..");
-const out = path.join(libRoot, "examples/out/DemoWin.prefab");
+const clientRoot = path.resolve(__dirname, "../../..");
+const out = path.join(clientRoot, "assets/prefabs/prefabScriptDemo.prefab");
 
-const doc = PrefabDoc.create("DemoWin", out);
+const panelSprite = "b96d3fca-49a4-4108-a7b7-bf3588c57464@72a9e";
+const btnSprite = "daaf2b18-9dd8-469d-80c1-dfc5f8873551@ce14b";
+
+const doc = PrefabDoc.create("prefabScriptDemo", out);
+doc.projectRoot = clientRoot;
+doc.root.setSize(600, 400);
+
+const bg = doc.createChild("bg", {
+    components: ["Sprite"],
+    size: { width: 560, height: 360 },
+});
+bg.setSprite(panelSprite);
+const bgSprite = bg.getComponent("Sprite");
+if (bgSprite) {
+    bgSprite._type = 1;
+    bgSprite._sizeMode = 0;
+}
 
 const title = doc.createChild("title", {
     components: ["Label"],
-    position: { x: 0, y: 240 },
-    size: { width: 720, height: 72 },
+    position: { x: 0, y: 140 },
+    size: { width: 500, height: 48 },
 });
-title.setLabel("Hello Prefab Script").setLabelSize(44, 52);
+title.setLabel("Prefab Script Demo").setLabelSize(32, 40);
 
 const okBtn = doc.createChild("okBtn", {
-    components: ["Button"],
-    position: { x: 0, y: -40 },
-    size: { width: 280, height: 80 },
+    components: ["Sprite", "Button"],
+    position: { x: 0, y: -120 },
+    size: { width: 180, height: 56 },
 });
+okBtn.setSprite(btnSprite);
+const okSprite = okBtn.getComponent("Sprite");
+if (okSprite) {
+    okSprite._type = 1;
+    okSprite._sizeMode = 0;
+}
+
 const okLabel = okBtn.createChild("Label", {
     components: ["Label"],
-    size: { width: 240, height: 48 },
+    size: { width: 160, height: 40 },
 });
-okLabel.setLabel("OK").setLabelSize(32, 36);
-
-const hint = doc.createChild("hint", {
-    components: ["Label"],
-    position: { x: 0, y: -160 },
-    size: { width: 800, height: 48 },
-});
-hint.setLabel("Change `out` to assets/... so Creator can import it.").setLabelSize(22, 28);
-
-// doc.instantiateSample("title_top");
-// doc.instantiateSample("button_small_1", { name: "btnClose", position: { x: -430, y: 850 } });
+okLabel.setLabel("确定").setLabelSize(28, 32);
 
 doc.save();
 console.log("created", out);

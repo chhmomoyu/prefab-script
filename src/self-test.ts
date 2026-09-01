@@ -4,6 +4,7 @@ import * as os from "os";
 import * as path from "path";
 import { PrefabDoc } from "./prefab-doc";
 import { ROOT_SIZE, WIDGET_ALIGN_FULL } from "./factories";
+import { renderPreview } from "./preview";
 
 const clientRoot = path.resolve(__dirname, "../../..");
 const slotitem = path.join(clientRoot, "assets/prefabs/ui/common/slotitem.prefab");
@@ -37,6 +38,18 @@ function main() {
     frame.setSprite(commonPng);
     frame.setSpriteFrame("common", "common_dec_2");
     frame.setOpacity(200);
+    const frameSprite = frame.getComponent("Sprite");
+    assert.strictEqual(frameSprite?._sizeMode, 0);
+    assert.deepStrictEqual(frame.size, { width: 188, height: 188 });
+
+    const badge = doc.createChild("badge", { components: ["Sprite"] });
+    badge.setSpriteFrame("common", "common_dec_2");
+    const badgeSprite = badge.getComponent("Sprite");
+    assert.strictEqual(badgeSprite?._sizeMode, 2);
+    assert.strictEqual(badgeSprite?._isTrimmedMode, false);
+    assert.ok((badge.size?.width || 0) > 0);
+    assert.ok((badge.size?.height || 0) > 0);
+    assert.notDeepStrictEqual(badge.size, { width: 100, height: 100 });
 
     const title = doc.createChild("title", { components: ["Label"] });
     title.setLabel("hello").setLabelSize(28).setPosition(0, 80);
@@ -78,8 +91,14 @@ function main() {
     const real = PrefabDoc.load(slotitem);
     assert.ok(real.dumpTree().includes("frame"));
 
+    const preview = renderPreview(reloaded, { outDir: tmpDir });
+    assert.ok(fs.existsSync(preview.previewPath));
+    const pngHead = fs.readFileSync(preview.previewPath).subarray(0, 8);
+    assert.deepStrictEqual(Array.from(pngHead), [137, 80, 78, 71, 13, 10, 26, 10]);
+
     console.log("self-test ok");
     console.log("tmp prefab:", tmpPrefab);
+    console.log("preview:", preview.previewPath);
     console.log("--- MiniTest tree ---");
     console.log(tree);
 }

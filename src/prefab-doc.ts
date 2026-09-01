@@ -1,6 +1,7 @@
 import * as fs from "fs";
 import * as path from "path";
 import { findProjectRoot, lookupAtlasSprite, resolveSprite, writePrefabMeta } from "./assets";
+import { AssetIndex } from "./asset-index";
 import {
     addComponentObject,
     attachPrefabInfo,
@@ -15,24 +16,43 @@ import {
     createWidget,
     normalizeComponentName,
     ROOT_SIZE,
+    SPRITE_SIZE_CUSTOM,
+    SPRITE_SIZE_RAW,
     WIDGET_ALIGN_FULL,
     type FactoryContext,
 } from "./factories";
 import { collectFileIds, eulerZToQuat, quatToEulerZ } from "./ids";
 import { instantiateSample as instantiateSampleImpl } from "./instantiate";
-import type { CreateChildOptions, InstantiateSampleOptions, NodeDump, PrefabObject, WidgetOptions } from "./types";
+import type { CreateChildOptions, InstantiateSampleOptions, NodeDump, PrefabObject, SpriteRef, WidgetOptions } from "./types";
 
 export class PrefabDoc {
     objects: PrefabObject[];
     filePath: string | null;
     projectRoot: string;
     usedFileIds: Set<string>;
+    private _assetIndex: AssetIndex | null = null;
+    private explicitSizeIds = new Set<number>();
 
     private constructor(objects: PrefabObject[], filePath: string | null, projectRoot: string) {
         this.objects = objects;
         this.filePath = filePath;
         this.projectRoot = projectRoot;
         this.usedFileIds = collectFileIds(objects);
+    }
+
+    assetIndex(): AssetIndex {
+        if (!this._assetIndex || this._assetIndex.projectRoot !== this.projectRoot) {
+            this._assetIndex = new AssetIndex(this.projectRoot);
+        }
+        return this._assetIndex;
+    }
+
+    markExplicitSize(nodeId: number): void {
+        this.explicitSizeIds.add(nodeId);
+    }
+
+    hasExplicitSize(nodeId: number): boolean {
+        return this.explicitSizeIds.has(nodeId);
     }
 
     static load(filePath: string): PrefabDoc {
@@ -190,7 +210,7 @@ export class PrefabDoc {
         fs.writeFileSync(target, JSON.stringify(this.objects, null, 2) + "\n", "utf8");
         this.filePath = target;
         const detected = findProjectRoot(target);
-        if (fs.existsSync(path.join(detected, "assets"))) {
+        if (fs.existsSync(path.join(detected, "assets/ui3"))) {
             this.projectRoot = detected;
         }
         writePrefabMeta(target, this.root.name);
@@ -361,7 +381,12 @@ export class PrefabNode {
     }
 
     setScale(x: number, y: number, z = 1): this {
-        this.raw._lscale = { __type__: "cc.Vec3", x, y, z };
+        const value = { __type__: "cc.Vec3", x, y, z };
+        if (this.isInstance) {
+            this.writeInstanceOverride("_lscale", value);
+            return this;
+        }
+        this.raw._lscale = value;
         return this;
     }
 
@@ -378,12 +403,17 @@ export class PrefabNode {
     }
 
     setSize(width: number, height: number): this {
-        const uit = this.ensureComponent("UITransform");
-        uit._contentSize = { __type__: "cc.Size", width, height };
+        this.doc.markExplicitSize(this.id);
         const sprite = this.getComponent("Sprite");
         if (sprite) {
-            sprite._sizeMode = 0;
+            sprite._sizeMode = SPRITE_SIZE_CUSTOM;
         }
+        return this.writeContentSize(width, height);
+    }
+
+    private writeContentSize(width: number, height: number): this {
+        const uit = this.ensureComponent("UITransform");
+        uit._contentSize = { __type__: "cc.Size", width, height };
         return this;
     }
 
@@ -394,21 +424,54 @@ export class PrefabNode {
     }
 
     setSprite(uuidOrPath: string): this {
-        const sprite = this.ensureComponent("Sprite");
-        const ref = resolveSprite(uuidOrPath, this.doc.projectRoot);
-        sprite._spriteFrame = {
-            __uuid__: ref.spriteFrame,
-            __expectedType__: "cc.SpriteFrame",
-        };
-        sprite._atlas = ref.atlas
-            ? { __uuid__: ref.atlas, __expectedType__: "cc.SpriteAtlas" }
-            : null;
-        return this;
+        return this.applySprite(resolveSprite(uuidOrPath, this.doc.projectRoot));
     }
 
     setSpriteFrame(atlasHint: string, frameName: string): this {
-        const ref = lookupAtlasSprite(this.doc.projectRoot, atlasHint, frameName);
-        return this.setSprite(ref.spriteFrame);
+        return this.applySprite(lookupAtlasSprite(this.doc.projectRoot, atlasHint, frameName));
+    }
+
+    /**
+     * 绑图：未显式 setSize 的节点用 RAW + 关 Trim，contentSize 跟图原始宽高。
+     * 已 CUSTOM（setSize / createChild.size）的保持节点尺寸。
+     */
+    applySprite(ref: SpriteRef): this {
+        const sprite = this.ensureComponent("Sprite");
+        const filled = this.fillSpriteRawSize(ref);
+        sprite._spriteFrame = {
+            __uuid__: filled.spriteFrame,
+            __expectedType__: "cc.SpriteFrame",
+        };
+        sprite._atlas = filled.atlas
+            ? { __uuid__: filled.atlas, __expectedType__: "cc.SpriteAtlas" }
+            : null;
+        const keepCustom = this.doc.hasExplicitSize(this.id) || sprite._sizeMode === SPRITE_SIZE_CUSTOM;
+        if (keepCustom) {
+            sprite._sizeMode = SPRITE_SIZE_CUSTOM;
+            return this;
+        }
+        sprite._sizeMode = SPRITE_SIZE_RAW;
+        sprite._isTrimmedMode = false;
+        if (filled.rawWidth && filled.rawHeight) {
+            this.writeContentSize(filled.rawWidth, filled.rawHeight);
+        }
+        return this;
+    }
+
+    private fillSpriteRawSize(ref: SpriteRef): SpriteRef {
+        if (ref.rawWidth && ref.rawHeight) {
+            return ref;
+        }
+        const info = this.doc.assetIndex().frameInfo(ref.spriteFrame);
+        if (!info?.rawWidth || !info?.rawHeight) {
+            return ref;
+        }
+        return {
+            ...ref,
+            atlas: ref.atlas,
+            rawWidth: info.rawWidth,
+            rawHeight: info.rawHeight,
+        };
     }
 
     setOpacity(alpha: number): this {
@@ -444,8 +507,31 @@ export class PrefabNode {
     }
 
     get scale(): { x: number; y: number; z: number } {
-        const s = this.raw._lscale || { x: 1, y: 1, z: 1 };
+        const overridden = this.instanceOverride("_lscale") as { x?: number; y?: number; z?: number } | undefined;
+        const s = overridden || this.raw._lscale || { x: 1, y: 1, z: 1 };
         return { x: s.x ?? 1, y: s.y ?? 1, z: s.z ?? 1 };
+    }
+
+    get anchor(): { x: number; y: number } {
+        const uit = this.getComponent("UITransform");
+        const a = uit?._anchorPoint;
+        return { x: a?.x ?? 0.5, y: a?.y ?? 0.5 };
+    }
+
+    get active(): boolean {
+        const overridden = this.instanceOverride("_active");
+        if (typeof overridden === "boolean") {
+            return overridden;
+        }
+        return this.raw._active !== false;
+    }
+
+    instancePrefabUuid(): string | null {
+        if (!this.isInstance) {
+            return null;
+        }
+        const uuid = this.prefabInfo?.asset?.__uuid__;
+        return typeof uuid === "string" ? uuid : null;
     }
 
     get rotation(): number {

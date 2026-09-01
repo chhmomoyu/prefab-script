@@ -4,7 +4,7 @@ A TypeScript library that reads and writes [Cocos Creator](https://www.cocos.com
 
 Built so humans or AI agents can assemble UI prefabs by writing scripts, instead of hand-editing `__id__` JSON or driving the editor.
 
-[中文](./README.md)
+[中文](./README.md) · [Changelog](./CHANGELOG.md)
 
 ## Why
 
@@ -43,6 +43,19 @@ Templates are loaded from `assets/sample_UI/<name>.prefab` by default. Change `S
 Root nodes default to **1080×1920** with a full-stretch Widget (`alignFlags = 45`) and `BlockInputEvents`. Override `ROOT_SIZE` or call `setSize` after `create()`.
 
 Atlas lookup lives in `src/assets.ts`. Change the search paths to match your atlas folders.
+
+## Preview and frame ID
+
+```powershell
+npx ts-node src/cli.ts frames <atlas>
+npx ts-node src/cli.ts preview path/to/Xxx.prefab --mock path/to/mock.png
+```
+
+`frames` writes per-frame PNGs and a numbered sheet under `.preview/frames/`. Match icons by looking at the sheet; do not guess from names like `text_2`.
+
+`preview --mock` writes `.preview/Xxx.compare.png` (mockup left, composite right). Nested `sample_UI` instances are expanded.
+
+Binding a sprite without `setSize` uses RAW sizeMode, Trim off, and the image's raw pixel size. `setSize` / `createChild({ size })` keeps CUSTOM.
 
 ## License
 
