@@ -34,7 +34,7 @@ mkdir -p .cursor/skills
 git clone https://github.com/chhmomoyu/prefab-script.git .cursor/skills/prefab-script
 ```
 
-把 [`reference.example.md`](./reference.example.md) **复制成** `reference.md`，填入你自己的画布尺寸、模板短名、图集目录。填好的 `reference.md` 不要提交到公开仓库。
+把 [`reference.example.md`](./reference.example.md) **复制成** `reference.md`，填入你自己的画布尺寸、模板短名、图集目录。填好的 `reference.md` 。
 
 ## 环境
 
