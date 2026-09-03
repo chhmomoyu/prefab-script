@@ -1,24 +1,26 @@
 import * as fs from "fs";
 import * as path from "path";
-import { listAtlasFrames } from "./assets";
+import { findProjectRoot, listAtlasFrames } from "./assets";
 import { exportAtlasFrames } from "./atlas-export";
 import { PrefabDoc } from "./prefab-doc";
 import { renderPreview } from "./preview";
+import { cleanPreviewTemp } from "./temp-dir";
 
 function usage(): never {
     console.log(`Usage:
   npx ts-node src/cli.ts dump <prefab>
   npx ts-node src/cli.ts get <prefab> <nodePath>
-  npx ts-node src/cli.ts atlas <common|common_bg|system_xxx|activity_xxx>
+  npx ts-node src/cli.ts atlas <图集短名>
   npx ts-node src/cli.ts frames <图集短名>
   npx ts-node src/cli.ts preview <prefab> [--mock 效果图.png] [--out out.png]
+  npx ts-node src/cli.ts clean
 `);
     process.exit(1);
 }
 
 function projectRoot(): string {
-    const fromLib = path.resolve(__dirname, "../../..");
-    if (fs.existsSync(path.join(fromLib, "assets/ui3"))) {
+    const fromLib = findProjectRoot(__dirname);
+    if (fs.existsSync(path.join(fromLib, "assets"))) {
         return fromLib;
     }
     return process.cwd();
@@ -54,11 +56,22 @@ const cmd = rest[0];
 const arg1 = rest[1];
 const arg2 = rest[2];
 
-if (!cmd || !arg1) {
+if (!cmd) {
     usage();
 }
 
-if (cmd === "atlas") {
+if (cmd === "clean") {
+    const result = cleanPreviewTemp();
+    if (result.removed.length === 0) {
+        console.log("preview temp already empty");
+    } else {
+        for (const dir of result.removed) {
+            console.log(`removed: ${dir}`);
+        }
+    }
+} else if (!arg1) {
+    usage();
+} else if (cmd === "atlas") {
     const frames = listAtlasFrames(projectRoot(), arg1);
     for (const frame of frames) {
         console.log(`${frame.name}\t${frame.uuid}`);

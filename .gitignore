@@ -2,3 +2,5 @@ node_modules/
 dist/
 *.tmp.prefab
 .preview/
+reference.md
+examples/out/

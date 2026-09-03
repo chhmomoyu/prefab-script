@@ -2,6 +2,7 @@ import * as fs from "fs";
 import * as path from "path";
 import { findAtlasMeta, listAtlasFrames } from "./assets";
 import { RgbaImage } from "./image";
+import { framesTempDir } from "./temp-dir";
 
 export interface ExportedFrame {
     index: number;
@@ -39,7 +40,7 @@ export function exportAtlasFrames(projectRoot: string, hint: string, outDir?: st
     const texture = RgbaImage.load(atlasPng);
     const packed = parsePlistRects(plistPath);
     const listed = listAtlasFrames(projectRoot, hint);
-    const dir = outDir || path.resolve(__dirname, "../.preview/frames", hint);
+    const dir = outDir || framesTempDir(hint);
     fs.mkdirSync(dir, { recursive: true });
 
     const frames: ExportedFrame[] = [];

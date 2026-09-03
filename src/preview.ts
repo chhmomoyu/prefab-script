@@ -4,6 +4,8 @@ import { ROOT_SIZE } from "./factories";
 import { AssetIndex } from "./asset-index";
 import { RgbaImage, sideBySide } from "./image";
 import { PrefabDoc, PrefabNode } from "./prefab-doc";
+import { findProjectRoot } from "./assets";
+import { previewTempRoot } from "./temp-dir";
 
 export interface PreviewOptions {
     outDir?: string;
@@ -83,15 +85,15 @@ function getIndex(projectRoot: string): AssetIndex {
 }
 
 function defaultOutDir(): string {
-    return path.resolve(__dirname, "../.preview");
+    return previewTempRoot();
 }
 
 function ensureProjectRoot(doc: PrefabDoc): void {
-    if (fs.existsSync(path.join(doc.projectRoot, "assets/ui3"))) {
+    if (fs.existsSync(path.join(doc.projectRoot, "assets"))) {
         return;
     }
-    const fromLib = path.resolve(__dirname, "../../..");
-    if (fs.existsSync(path.join(fromLib, "assets/ui3"))) {
+    const fromLib = findProjectRoot(__dirname);
+    if (fs.existsSync(path.join(fromLib, "assets"))) {
         doc.projectRoot = fromLib;
     }
 }

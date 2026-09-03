@@ -15,7 +15,10 @@ export function findProjectRoot(fromFile: string): string {
 
     let dir = path.dirname(resolved);
     while (dir !== path.dirname(dir)) {
-        if (fs.existsSync(path.join(dir, "assets")) && fs.existsSync(path.join(dir, "package.json"))) {
+        const hasAssets = fs.existsSync(path.join(dir, "assets"));
+        const looksLikeCreator =
+            fs.existsSync(path.join(dir, "package.json")) || fs.existsSync(path.join(dir, "settings"));
+        if (hasAssets && looksLikeCreator) {
             return dir;
         }
         dir = path.dirname(dir);
@@ -93,11 +96,9 @@ export interface AtlasFrame {
     rawHeight?: number;
 }
 
+/** 短名 → `.plist.meta` 相对工程根的路径。按你的图集目录填写。 */
 const ATLAS_HINTS: Record<string, string> = {
-    common: "assets/ui3/common/common.plist.meta",
-    common_bg: "assets/ui3/common/common_bg.plist.meta",
-    common_text: "assets/ui3/common/common_text.plist.meta",
-    common_quality: "assets/ui3/common/common_quality.plist.meta",
+    // common: "assets/textures/common.plist.meta",
 };
 
 export function findAtlasMeta(projectRoot: string, hint: string): string {
@@ -108,20 +109,46 @@ export function findAtlasMeta(projectRoot: string, hint: string): string {
             return p;
         }
     }
-    const candidates = [
-        path.join(projectRoot, "assets/ui3/common", `${hint}.plist.meta`),
-        path.join(projectRoot, "assets/ui3/system", `${hint}.plist.meta`),
-        path.join(projectRoot, "assets/ui3/activity", `${hint}.plist.meta`),
-        path.join(projectRoot, "assets/ui3/game", `${hint}.plist.meta`),
-        path.join(projectRoot, "assets/ui3/other", `${hint}.plist.meta`),
-        path.join(projectRoot, "assets/localization/zh-Hant-TW/system", `${hint}.plist.meta`),
+    const fileName = `${hint}.plist.meta`;
+    const direct = [
+        path.join(projectRoot, "assets", fileName),
+        path.join(projectRoot, "assets", hint, fileName),
     ];
-    for (const p of candidates) {
+    for (const p of direct) {
         if (fs.existsSync(p)) {
             return p;
         }
     }
-    throw new Error(`Atlas meta not found for "${hint}"`);
+    const walked = walkForFile(path.join(projectRoot, "assets"), fileName);
+    if (walked) {
+        return walked;
+    }
+    throw new Error(`Atlas meta not found for "${hint}". Add a mapping in ATLAS_HINTS.`);
+}
+
+function walkForFile(dir: string, fileName: string): string | null {
+    if (!fs.existsSync(dir)) {
+        return null;
+    }
+    let entries: fs.Dirent[];
+    try {
+        entries = fs.readdirSync(dir, { withFileTypes: true });
+    } catch {
+        return null;
+    }
+    for (const ent of entries) {
+        const full = path.join(dir, ent.name);
+        if (ent.isFile() && ent.name === fileName) {
+            return full;
+        }
+        if (ent.isDirectory()) {
+            const hit = walkForFile(full, fileName);
+            if (hit) {
+                return hit;
+            }
+        }
+    }
+    return null;
 }
 
 export function listAtlasFrames(projectRoot: string, hint: string): AtlasFrame[] {

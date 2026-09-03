@@ -210,7 +210,7 @@ export class PrefabDoc {
         fs.writeFileSync(target, JSON.stringify(this.objects, null, 2) + "\n", "utf8");
         this.filePath = target;
         const detected = findProjectRoot(target);
-        if (fs.existsSync(path.join(detected, "assets/ui3"))) {
+        if (fs.existsSync(path.join(detected, "assets"))) {
             this.projectRoot = detected;
         }
         writePrefabMeta(target, this.root.name);

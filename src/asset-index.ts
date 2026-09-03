@@ -3,7 +3,7 @@ import * as path from "path";
 
 const META_RE = /\.(plist|png|jpg|jpeg|prefab|webp)\.meta$/i;
 
-const SEARCH_DIRS = ["assets/ui3", "assets/ui3_nopack", "assets/localization", "assets/sample_UI"];
+const SEARCH_DIRS = ["assets"];
 
 export interface FrameInfo {
     texturePath: string;

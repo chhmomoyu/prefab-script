@@ -1,8 +1,8 @@
 {
     "name": "prefab-script",
-    "version": "1.1.0",
+    "version": "1.2.0",
     "description": "TypeScript API for writing Cocos Creator 3.8 prefab files (Node scripts, not an editor panel)",
-    "main": "./editor-main.js",
+    "main": "./src/index.ts",
     "types": "./src/index.ts",
     "scripts": {
         "build": "npx tsc",
